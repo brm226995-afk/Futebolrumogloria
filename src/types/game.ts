@@ -100,11 +100,25 @@ export interface CalendarDay {
   type: 'MATCH' | 'TRAINING' | 'REST' | 'EVENT';
   opponent?: OpponentTeam;
   isHome?: boolean;
-  competition?: 'Taça Samba' | 'Campeonato Nacional' | 'Copa Libertudores';
+  competition?: 'Taça Samba' | 'Campeonato Nacional' | 'Copa Libertudores' | 'Seleção BR';
+  isNationalTeamMatch?: boolean;
   matchIndexInComp?: number; // e.g. 1 to 9 for Taça Samba, 1 to 18 for Camp Nacional
   title: string;
   status: 'PENDING' | 'CURRENT' | 'COMPLETED';
   matchStats?: MatchStats;
+}
+
+export interface ScoutedPlayer {
+  id: string;
+  name: string;
+  age: number;
+  position: 'GOL' | 'ZAG' | 'LAT' | 'VOL' | 'MEI' | 'ATA';
+  ovr: number;
+  potential: number;
+  cost: number;
+  avatarColor: string;
+  specialTrait: string;
+  isRecruited?: boolean;
 }
 
 export type TacticsPosture = 'Defensivo' | 'Equilíbrio' | 'Ofensivo';
@@ -145,7 +159,7 @@ export interface SocialPost {
 export interface TrophyItem {
   id: string;
   title: string;
-  category: 'CHAMPIONSHIP' | 'INDIVIDUAL' | 'SPECIAL';
+  category: 'CHAMPIONSHIP' | 'INDIVIDUAL' | 'SPECIAL' | 'SELECAO_BR';
   description: string;
   unlocked: boolean;
   unlockedDate?: string;

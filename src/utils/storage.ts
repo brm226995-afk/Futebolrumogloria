@@ -23,6 +23,7 @@ export interface PersistedGameState {
   trophies: TrophyItem[];
   currentClub?: ClubInfo;
   activeTransferOffers?: TransferOffer[];
+  isCalledUpToSelecao?: boolean;
 }
 
 export function saveGameState(state: PersistedGameState): void {

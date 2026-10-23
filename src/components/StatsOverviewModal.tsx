@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { X, Trophy, BarChart2, Star, Award, Shield } from 'lucide-react';
+import { X, Trophy, BarChart2, Star, Award, Shield, Globe } from 'lucide-react';
 import { AvatarConfig, CalendarDay, ClubInfo } from '../types/game';
-import { TACA_SAMBA_OPPONENTS, CAMP_NACIONAL_OPPONENTS } from '../data/initialData';
+import { TACA_SAMBA_OPPONENTS, CAMP_NACIONAL_OPPONENTS, FICTIONAL_NATIONAL_TEAMS, SELECAO_BR_TEAM } from '../data/initialData';
 import { playSound } from '../utils/audio';
 
 interface StatsOverviewModalProps {
@@ -20,7 +20,7 @@ export const StatsOverviewModal: React.FC<StatsOverviewModalProps> = ({
   currentClub,
 }) => {
   const [tab, setTab] = useState<'standings' | 'player'>('standings');
-  const [selectedComp, setSelectedComp] = useState<'TACA_SAMBA' | 'CAMP_NACIONAL'>('TACA_SAMBA');
+  const [selectedComp, setSelectedComp] = useState<'TACA_SAMBA' | 'CAMP_NACIONAL' | 'SELECAO_BR'>('TACA_SAMBA');
 
   if (!isOpen) return null;
 
@@ -35,14 +35,19 @@ export const StatsOverviewModal: React.FC<StatsOverviewModalProps> = ({
         ).toFixed(1)
       : '6.5';
 
-  // Opponents change completely per championship!
+  // Opponents change per tournament / national team
   const currentOpponents =
-    selectedComp === 'TACA_SAMBA' ? TACA_SAMBA_OPPONENTS : CAMP_NACIONAL_OPPONENTS;
+    selectedComp === 'TACA_SAMBA'
+      ? TACA_SAMBA_OPPONENTS
+      : selectedComp === 'CAMP_NACIONAL'
+      ? CAMP_NACIONAL_OPPONENTS
+      : FICTIONAL_NATIONAL_TEAMS;
 
   const compMatches = playedMatches.filter(
     (m) =>
       (selectedComp === 'TACA_SAMBA' && m.competition === 'Taça Samba') ||
-      (selectedComp === 'CAMP_NACIONAL' && m.competition === 'Campeonato Nacional')
+      (selectedComp === 'CAMP_NACIONAL' && m.competition === 'Campeonato Nacional') ||
+      (selectedComp === 'SELECAO_BR' && m.competition === 'Seleção BR')
   );
 
   const heroWins = compMatches.filter(
@@ -55,13 +60,14 @@ export const StatsOverviewModal: React.FC<StatsOverviewModalProps> = ({
     (m) => (m.matchStats?.homeScore || 0) < (m.matchStats?.awayScore || 0)
   ).length;
 
-  const heroClubName = currentClub?.name || 'Manaus Gold';
-  const heroClubBadge = currentClub?.badge || '👑';
+  const isSelecao = selectedComp === 'SELECAO_BR';
+  const heroTeamName = isSelecao ? 'Seleção Brasileira' : (currentClub?.name || 'Manaus Gold');
+  const heroTeamBadge = isSelecao ? '🇧🇷' : (currentClub?.badge || '👑');
 
   const allTeams = [
     {
-      name: heroClubName,
-      badge: heroClubBadge,
+      name: heroTeamName,
+      badge: heroTeamBadge,
       isHero: true,
       p: compMatches.length,
       w: heroWins,
@@ -70,7 +76,7 @@ export const StatsOverviewModal: React.FC<StatsOverviewModalProps> = ({
       pts: heroWins * 3 + heroDraws,
     },
     ...currentOpponents
-      .filter((opp) => opp.name !== heroClubName)
+      .filter((opp) => opp.name !== heroTeamName)
       .map((opp, idx) => {
         const p = Math.max(1, compMatches.length);
         const w = Math.max(0, Math.floor(opp.ovr / 16 - (idx % 3)));
@@ -145,21 +151,21 @@ export const StatsOverviewModal: React.FC<StatsOverviewModalProps> = ({
         <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
           {tab === 'standings' ? (
             <div className="flex flex-col gap-3">
-              {/* Championship Switcher: The teams change completely! */}
-              <div className="flex items-center gap-2 bg-slate-900/90 p-1.5 rounded-xl border border-slate-800">
+              {/* Championship Switcher: Taça Samba, Camp Nacional, or Seleção BR */}
+              <div className="grid grid-cols-3 gap-1.5 bg-slate-900/90 p-1.5 rounded-xl border border-slate-800">
                 <button
                   type="button"
                   onClick={() => {
                     playSound('click');
                     setSelectedComp('TACA_SAMBA');
                   }}
-                  className={`flex-1 py-2 px-3 rounded-lg text-xs font-heading font-black transition-all ${
+                  className={`py-2 px-1.5 rounded-lg text-[11px] font-heading font-black transition-all truncate text-center ${
                     selectedComp === 'TACA_SAMBA'
                       ? 'bg-amber-500 text-slate-950 shadow-md'
                       : 'text-slate-300 hover:bg-slate-800'
                   }`}
                 >
-                  Taça Samba (10 Clubes Regionais)
+                  Taça Samba
                 </button>
                 <button
                   type="button"
@@ -167,13 +173,28 @@ export const StatsOverviewModal: React.FC<StatsOverviewModalProps> = ({
                     playSound('click');
                     setSelectedComp('CAMP_NACIONAL');
                   }}
-                  className={`flex-1 py-2 px-3 rounded-lg text-xs font-heading font-black transition-all ${
+                  className={`py-2 px-1.5 rounded-lg text-[11px] font-heading font-black transition-all truncate text-center ${
                     selectedComp === 'CAMP_NACIONAL'
                       ? 'bg-blue-600 text-white shadow-md'
                       : 'text-slate-300 hover:bg-slate-800'
                   }`}
                 >
-                  Campeonato Nacional (Novos Clubes)
+                  Camp. Nacional
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    playSound('click');
+                    setSelectedComp('SELECAO_BR');
+                  }}
+                  className={`py-2 px-1.5 rounded-lg text-[11px] font-heading font-black transition-all truncate text-center flex items-center justify-center gap-1 ${
+                    selectedComp === 'SELECAO_BR'
+                      ? 'bg-gradient-to-r from-yellow-400 to-green-600 text-slate-950 shadow-md font-black'
+                      : 'text-yellow-400 hover:bg-slate-800'
+                  }`}
+                >
+                  <span>🇧🇷</span>
+                  <span>Seleção BR</span>
                 </button>
               </div>
 
@@ -181,10 +202,14 @@ export const StatsOverviewModal: React.FC<StatsOverviewModalProps> = ({
               <div className="bg-slate-900/80 border border-slate-800 rounded-xl overflow-hidden">
                 <div className="px-3 py-2 bg-slate-800/60 flex items-center justify-between text-xs text-slate-300">
                   <span className="font-bold text-amber-300">
-                    {selectedComp === 'TACA_SAMBA' ? 'Taça Samba · 9 Partidas' : 'Campeonato Nacional · 18 Partidas'}
+                    {selectedComp === 'TACA_SAMBA'
+                      ? 'Taça Samba · 9 Partidas'
+                      : selectedComp === 'CAMP_NACIONAL'
+                      ? 'Campeonato Nacional · 18 Partidas'
+                      : '🇧🇷 Copa Internacional das Nações (Seleção BR & Países)'}
                   </span>
                   <span className="text-[11px] text-slate-400 font-mono">
-                    {allTeams.length} Clubes Participantes
+                    {allTeams.length} {selectedComp === 'SELECAO_BR' ? 'Seleções' : 'Clubes'} Participantes
                   </span>
                 </div>
                 <div className="overflow-x-auto max-h-[50vh]">

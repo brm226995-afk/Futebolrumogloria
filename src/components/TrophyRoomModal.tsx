@@ -15,8 +15,17 @@ export const TrophyRoomModal: React.FC<TrophyRoomModalProps> = ({
   trophies,
 }) => {
   const [selectedTrophy, setSelectedTrophy] = useState<TrophyItem | null>(null);
+  const [filterCategory, setFilterCategory] = useState<'ALL' | 'CHAMPIONSHIP' | 'INDIVIDUAL' | 'SELECAO_BR'>('ALL');
 
   if (!isOpen) return null;
+
+  const filteredTrophies = trophies.filter((t) => {
+    if (filterCategory === 'ALL') return true;
+    if (filterCategory === 'CHAMPIONSHIP') return t.category === 'CHAMPIONSHIP';
+    if (filterCategory === 'INDIVIDUAL') return t.category === 'INDIVIDUAL' || t.category === 'SPECIAL';
+    if (filterCategory === 'SELECAO_BR') return t.category === 'SELECAO_BR';
+    return true;
+  });
 
   const unlockedCount = trophies.filter((t) => t.unlocked).length;
 
@@ -50,7 +59,7 @@ export const TrophyRoomModal: React.FC<TrophyRoomModalProps> = ({
         </div>
 
         {/* Top Trophy Counter Bar */}
-        <div className="bg-slate-900/90 px-5 py-2.5 border-b border-slate-800 flex items-center justify-between">
+        <div className="bg-slate-900/90 px-5 py-2 border-b border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-xs text-slate-400">Total de Conquistas:</span>
             <span className="font-heading font-black text-amber-400 font-mono text-sm">
@@ -59,7 +68,7 @@ export const TrophyRoomModal: React.FC<TrophyRoomModalProps> = ({
           </div>
 
           <div className="flex items-center gap-1.5">
-            <div className="w-32 h-2 bg-slate-800 rounded-full overflow-hidden">
+            <div className="w-28 sm:w-36 h-2 bg-slate-800 rounded-full overflow-hidden">
               <div
                 className="h-full bg-gradient-to-r from-amber-500 to-yellow-300 transition-all duration-500"
                 style={{ width: `${(unlockedCount / trophies.length) * 100}%` }}
@@ -71,11 +80,73 @@ export const TrophyRoomModal: React.FC<TrophyRoomModalProps> = ({
           </div>
         </div>
 
+        {/* Category Filters Bar */}
+        <div className="grid grid-cols-4 gap-1 p-2 bg-[#081020] border-b border-slate-800 text-[11px]">
+          <button
+            type="button"
+            onClick={() => {
+              playSound('click');
+              setFilterCategory('ALL');
+            }}
+            className={`py-1.5 rounded-lg font-bold transition-all text-center ${
+              filterCategory === 'ALL'
+                ? 'bg-amber-500 text-slate-950 shadow'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            Todos ({trophies.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              playSound('click');
+              setFilterCategory('CHAMPIONSHIP');
+            }}
+            className={`py-1.5 rounded-lg font-bold transition-all text-center ${
+              filterCategory === 'CHAMPIONSHIP'
+                ? 'bg-amber-500 text-slate-950 shadow'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            Clubes
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              playSound('click');
+              setFilterCategory('INDIVIDUAL');
+            }}
+            className={`py-1.5 rounded-lg font-bold transition-all text-center ${
+              filterCategory === 'INDIVIDUAL'
+                ? 'bg-amber-500 text-slate-950 shadow'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            Individuais
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              playSound('click');
+              setFilterCategory('SELECAO_BR');
+            }}
+            className={`py-1.5 rounded-lg font-bold transition-all text-center flex items-center justify-center gap-1 ${
+              filterCategory === 'SELECAO_BR'
+                ? 'bg-gradient-to-r from-yellow-400 to-green-600 text-slate-950 font-black shadow'
+                : 'text-yellow-400 hover:text-yellow-300'
+            }`}
+          >
+            <span>🇧🇷</span>
+            <span>Seleção BR</span>
+          </button>
+        </div>
+
         {/* Trophy Shelves Grid */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-5 flex flex-col gap-4">
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5">
-            {trophies.map((trophy) => {
+            {filteredTrophies.map((trophy) => {
               const isSelected = selectedTrophy?.id === trophy.id;
+              const isSelecaoTrophy = trophy.category === 'SELECAO_BR';
 
               return (
                 <button
@@ -87,7 +158,9 @@ export const TrophyRoomModal: React.FC<TrophyRoomModalProps> = ({
                   }}
                   className={`relative flex flex-col items-center justify-between p-4 rounded-2xl border transition-all text-center min-h-[170px] ${
                     trophy.unlocked
-                      ? 'bg-gradient-to-b from-[#1C170A] to-[#120F05] border-amber-500/60 shadow-[0_0_20px_rgba(250,204,21,0.15)] hover:border-amber-400'
+                      ? isSelecaoTrophy
+                        ? 'bg-gradient-to-b from-[#1E2508] to-[#0A1705] border-yellow-400/80 shadow-[0_0_20px_rgba(250,204,21,0.25)]'
+                        : 'bg-gradient-to-b from-[#1C170A] to-[#120F05] border-amber-500/60 shadow-[0_0_20px_rgba(250,204,21,0.15)] hover:border-amber-400'
                       : 'bg-slate-900/50 border-slate-800/80 opacity-60 hover:opacity-80'
                   } ${isSelected ? 'ring-2 ring-amber-300 scale-105' : ''}`}
                 >
@@ -96,11 +169,15 @@ export const TrophyRoomModal: React.FC<TrophyRoomModalProps> = ({
                     <span
                       className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded ${
                         trophy.unlocked
-                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                          ? isSelecaoTrophy
+                            ? 'bg-yellow-400/20 text-yellow-300 border border-yellow-400/40'
+                            : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
                           : 'bg-slate-800 text-slate-400'
                       }`}
                     >
-                      {trophy.category === 'CHAMPIONSHIP'
+                      {trophy.category === 'SELECAO_BR'
+                        ? '🇧🇷 Seleção BR'
+                        : trophy.category === 'CHAMPIONSHIP'
                         ? 'Campeonato'
                         : trophy.category === 'INDIVIDUAL'
                         ? 'Individual'

@@ -37,7 +37,7 @@ interface SeasonCalendarProps {
   userEnergy: number;
 }
 
-const MONTHS = ['Janeiro', 'Fevereiro', 'Março', 'Abril'];
+const MONTHS = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho'];
 
 export const SeasonCalendar: React.FC<SeasonCalendarProps> = ({
   days,
@@ -235,7 +235,12 @@ export const SeasonCalendar: React.FC<SeasonCalendarProps> = ({
         <div className="flex items-center gap-1 overflow-x-auto py-1">
           {MONTHS.map((month) => {
             const isSelected = activeMonth === month;
-            const compLabel = month === 'Janeiro' ? 'Taça Samba (9 Jogos)' : 'Camp. Nacional (18 Jogos)';
+            const compLabel =
+              month === 'Janeiro'
+                ? 'Taça Samba + Seleção'
+                : month === 'Fevereiro' || month === 'Março' || month === 'Abril'
+                ? 'Camp. Nacional + Seleção BR'
+                : 'Copa Libertudores + Seleção';
 
             return (
               <button
@@ -273,7 +278,11 @@ export const SeasonCalendar: React.FC<SeasonCalendarProps> = ({
               </span>
             </div>
             <div className="text-xs text-amber-400 font-bold">
-              {activeMonth === 'Janeiro' ? 'Taça Samba (9 Partidas)' : 'Campeonato Nacional (18 Partidas)'}
+              {activeMonth === 'Janeiro'
+                ? 'Taça Samba (9 Partidas) + Seleção BR'
+                : activeMonth === 'Fevereiro' || activeMonth === 'Março' || activeMonth === 'Abril'
+                ? 'Campeonato Nacional (18 Partidas) + Seleção BR'
+                : 'Copa Libertudores (11 Partidas) + Seleção BR'}
             </div>
           </div>
 
@@ -284,6 +293,7 @@ export const SeasonCalendar: React.FC<SeasonCalendarProps> = ({
               const isSelected = day.globalDayIndex === selectedGlobalIndex;
               const isCompleted = day.status === 'COMPLETED';
               const isMatch = day.type === 'MATCH';
+              const isSelecao = isMatch && (day.competition === 'Seleção BR' || day.isNationalTeamMatch);
 
               return (
                 <button
@@ -295,7 +305,11 @@ export const SeasonCalendar: React.FC<SeasonCalendarProps> = ({
                   }}
                   className={`relative flex flex-col items-center justify-between p-2 rounded-xl border transition-all text-left min-h-[76px] sm:min-h-[86px] ${
                     isSelected
-                      ? 'ring-2 ring-amber-400 shadow-lg scale-105 z-10 bg-slate-800'
+                      ? isSelecao
+                        ? 'ring-2 ring-yellow-400 shadow-xl scale-105 z-10 bg-gradient-to-b from-yellow-950/80 to-emerald-950/60 border-yellow-400'
+                        : 'ring-2 ring-amber-400 shadow-lg scale-105 z-10 bg-slate-800'
+                      : isSelecao
+                      ? 'border-yellow-400/90 bg-gradient-to-b from-yellow-950/40 via-emerald-950/30 to-slate-900 shadow-md shadow-yellow-500/15 hover:border-yellow-300'
                       : isCurrent
                       ? 'border-amber-400/80 bg-amber-950/30 shadow-md ring-2 ring-amber-500/40'
                       : 'border-slate-800 bg-slate-900/60 hover:bg-slate-800/80'
@@ -303,15 +317,18 @@ export const SeasonCalendar: React.FC<SeasonCalendarProps> = ({
                 >
                   <div className="w-full flex items-center justify-between">
                     <span
-                      className={`text-xs font-bold font-mono px-1.5 py-0.5 rounded ${
-                        isCurrent
+                      className={`text-xs font-bold font-mono px-1.5 py-0.5 rounded flex items-center gap-0.5 ${
+                        isSelecao
+                          ? 'bg-yellow-400 text-slate-950 font-black'
+                          : isCurrent
                           ? 'bg-amber-400 text-slate-950 font-black'
                           : isCompleted
                           ? 'bg-emerald-600/30 text-emerald-300'
                           : 'text-slate-400'
                       }`}
                     >
-                      D{day.dayNumber}
+                      {isSelecao && <span className="text-[10px]">🇧🇷</span>}
+                      <span>D{day.dayNumber}</span>
                     </span>
 
                     {isCompleted && (
@@ -324,7 +341,20 @@ export const SeasonCalendar: React.FC<SeasonCalendarProps> = ({
                   </div>
 
                   <div className="w-full flex flex-col items-center justify-center my-1">
-                    {isMatch ? (
+                    {isSelecao ? (
+                      <>
+                        <div className="relative mb-0.5 flex items-center justify-center">
+                          <span className="text-base sm:text-lg">{day.opponent?.badge || '⚽'}</span>
+                          <span className="absolute -bottom-1 -right-1 text-[10px]">🇧🇷</span>
+                        </div>
+                        <span className="text-[10px] font-bold text-center text-yellow-200 line-clamp-1 w-full">
+                          {day.opponent?.shortName}
+                        </span>
+                        <span className="text-[8px] font-black uppercase text-yellow-300 bg-yellow-950/80 border border-yellow-500/40 px-1 rounded mt-0.5">
+                          SELEÇÃO BR
+                        </span>
+                      </>
+                    ) : isMatch ? (
                       <>
                         <span className="text-base sm:text-lg mb-0.5">{day.opponent?.badge || '⚽'}</span>
                         <span className="text-[10px] font-bold text-center text-slate-200 line-clamp-1 w-full">
@@ -358,6 +388,10 @@ export const SeasonCalendar: React.FC<SeasonCalendarProps> = ({
                       <span className="text-[9px] font-black uppercase text-amber-400 tracking-wider">
                         {isMatch ? 'JOGO!' : 'HOJE'}
                       </span>
+                    ) : isSelecao ? (
+                      <span className="text-[8px] font-bold text-yellow-400">
+                        Amistoso BR
+                      </span>
                     ) : (
                       <span className="text-[8px] text-slate-500">
                         {day.type === 'MATCH' ? (day.isHome ? 'Casa' : 'Fora') : 'Livre'}
@@ -372,7 +406,11 @@ export const SeasonCalendar: React.FC<SeasonCalendarProps> = ({
           <div className="mt-4 pt-3 border-t border-slate-800 flex flex-wrap items-center gap-4 text-xs text-slate-400">
             <div className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
-              <span>Partida Oficial</span>
+              <span>Partida de Clube</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs">🇧🇷</span>
+              <span className="text-yellow-300 font-bold">Seleção BR (Dias Livres)</span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-cyan-400" />
@@ -424,16 +462,33 @@ export const SeasonCalendar: React.FC<SeasonCalendarProps> = ({
 
                   <div className="flex items-center justify-between px-2">
                     <div className="flex flex-col items-center text-center w-28">
-                      <div
-                        className="w-12 h-12 rounded-xl text-slate-950 flex items-center justify-center font-black text-xl shadow-lg border border-white/20 mb-1.5"
-                        style={{ backgroundColor: currentClub?.primaryColor || '#F7D002' }}
-                      >
-                        {currentClub?.badge || '👑'}
-                      </div>
-                      <span className="text-xs font-bold text-white">
-                        {currentClub?.name || 'Manaus Gold'}
-                      </span>
-                      <span className="text-[10px] text-amber-400 font-bold">GERAL {teamOvr}</span>
+                      {selectedDay.competition === 'Seleção BR' || selectedDay.isNationalTeamMatch ? (
+                        <>
+                          <div
+                            className="w-12 h-12 rounded-xl text-slate-950 flex items-center justify-center font-black text-2xl shadow-lg border border-yellow-300/40 mb-1.5"
+                            style={{ backgroundColor: '#FACC15' }}
+                          >
+                            🇧🇷
+                          </div>
+                          <span className="text-xs font-bold text-yellow-300 leading-tight">
+                            Seleção Brasileira
+                          </span>
+                          <span className="text-[10px] text-emerald-400 font-bold">GERAL 86</span>
+                        </>
+                      ) : (
+                        <>
+                          <div
+                            className="w-12 h-12 rounded-xl text-slate-950 flex items-center justify-center font-black text-xl shadow-lg border border-white/20 mb-1.5"
+                            style={{ backgroundColor: currentClub?.primaryColor || '#F7D002' }}
+                          >
+                            {currentClub?.badge || '👑'}
+                          </div>
+                          <span className="text-xs font-bold text-white">
+                            {currentClub?.name || 'Manaus Gold'}
+                          </span>
+                          <span className="text-[10px] text-amber-400 font-bold">GERAL {teamOvr}</span>
+                        </>
+                      )}
                     </div>
 
                     <div className="flex flex-col items-center">
@@ -466,7 +521,7 @@ export const SeasonCalendar: React.FC<SeasonCalendarProps> = ({
 
                   <div className="mt-4 pt-3 border-t border-slate-800 text-xs text-slate-300 space-y-1">
                     <div className="flex justify-between">
-                      <span className="text-slate-400">Cidade:</span>
+                      <span className="text-slate-400">{selectedDay.competition === 'Seleção BR' ? 'Sede do Duelo:' : 'Cidade:'}</span>
                       <span className="font-medium">{selectedDay.opponent.city}</span>
                     </div>
                     <div className="flex justify-between">
@@ -476,34 +531,79 @@ export const SeasonCalendar: React.FC<SeasonCalendarProps> = ({
                   </div>
                 </div>
 
-                {/* Match Action Buttons: JOGAR ou SIMULAR AUTOMATICAMENTE */}
-                {selectedDay.globalDayIndex === currentGlobalIndex && selectedDay.status !== 'COMPLETED' ? (
-                  <div className="flex flex-col gap-2">
-                    {/* Option 1: JOGAR PARTIDA (with live simulation and 10-min highlight action) */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        playSound('whistle');
-                        onSelectMatch(selectedDay.globalDayIndex, 'PLAY');
-                      }}
-                      className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-heading font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-xl shadow-blue-900/50 transition-all hover:scale-[1.01] active:scale-95 animate-pulse"
-                    >
-                      <Play className="w-5 h-5 fill-current" />
-                      JOGAR PARTIDA COMPLETA
-                    </button>
+                {/* Seleção BR Special Ribbon */}
+                {(selectedDay.competition === 'Seleção BR' || selectedDay.isNationalTeamMatch) && (
+                  <div className="bg-gradient-to-r from-yellow-500/20 via-green-600/20 to-yellow-500/20 border border-yellow-400/50 rounded-xl p-2.5 text-center flex items-center justify-center gap-2">
+                    <span className="text-lg">🇧🇷</span>
+                    <span className="text-xs font-heading font-black text-yellow-300 uppercase tracking-wide">
+                      Partida Internacional da Seleção Brasileira
+                    </span>
+                  </div>
+                )}
 
-                    {/* Option 2: SIMULAR AUTOMATICAMENTE */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        playSound('whistle');
-                        onSelectMatch(selectedDay.globalDayIndex, 'SIMULATE');
-                      }}
-                      className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-heading font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95"
-                    >
-                      <Zap className="w-4 h-4 text-amber-300" />
-                      SIMULAR AUTOMATICAMENTE (RESULTADO RÁPIDO)
-                    </button>
+                {/* Match Action Buttons: JOGAR ou SIMULAR AUTOMATICAMENTE */}
+                {selectedDay.status !== 'COMPLETED' ? (
+                  <div className="flex flex-col gap-2">
+                    {userEnergy <= 0 ? (
+                      <div className="p-3 rounded-xl bg-rose-950/70 border border-rose-500/40 text-center flex flex-col gap-2">
+                        <span className="text-xs font-bold text-rose-300 flex items-center justify-center gap-1.5">
+                          <Zap className="w-4 h-4 text-rose-400" />
+                          Energia esgotada! Descanse para recuperar 100%.
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            playSound('click');
+                            onRest();
+                          }}
+                          className="py-2.5 px-3 rounded-lg bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-heading font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow"
+                        >
+                          <Zap className="w-4 h-4 text-cyan-200 fill-current" />
+                          <span>DESCANSAR (+100% ENERGIA)</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Option 1: JOGAR PARTIDA (with live simulation and 10-min highlight action) */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            playSound('whistle');
+                            onSelectMatch(selectedDay.globalDayIndex, 'PLAY');
+                          }}
+                          className={`w-full py-3.5 px-4 rounded-xl text-white font-heading font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-xl transition-all hover:scale-[1.01] active:scale-95 ${
+                            selectedDay.competition === 'Seleção BR'
+                              ? 'bg-gradient-to-r from-yellow-500 via-amber-400 to-emerald-600 text-slate-950 shadow-yellow-500/30'
+                              : 'bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 shadow-blue-900/50 animate-pulse'
+                          }`}
+                        >
+                          {selectedDay.competition === 'Seleção BR' ? (
+                            <>
+                              <span className="text-lg">🇧🇷</span>
+                              <span>JOGAR PELA SELEÇÃO BR</span>
+                            </>
+                          ) : (
+                            <>
+                              <Play className="w-5 h-5 fill-current" />
+                              <span>JOGAR PARTIDA COMPLETA</span>
+                            </>
+                          )}
+                        </button>
+
+                        {/* Option 2: SIMULAR AUTOMATICAMENTE */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            playSound('whistle');
+                            onSelectMatch(selectedDay.globalDayIndex, 'SIMULATE');
+                          }}
+                          className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-heading font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95"
+                        >
+                          <Zap className="w-4 h-4 text-amber-300" />
+                          SIMULAR AUTOMATICAMENTE (-1 ENERGIA)
+                        </button>
+                      </>
+                    )}
                   </div>
                 ) : selectedDay.status === 'COMPLETED' ? (
                   <button

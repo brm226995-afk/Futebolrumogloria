@@ -15,6 +15,8 @@ import {
   TeamPlayer,
   TransferOffer,
   TrophyItem,
+  ScoutedPlayer,
+  TrainingDrillType,
 } from './types/game';
 import {
   DEFAULT_CLUB,
@@ -26,6 +28,7 @@ import {
   INITIAL_TROPHIES,
   TACA_SAMBA_OPPONENTS,
   CAMP_NACIONAL_OPPONENTS,
+  SELECAO_BR_TEAM,
   createTransferOffer,
   generateFullCalendar,
 } from './data/initialData';
@@ -40,7 +43,8 @@ import { SocialFeedModal } from './components/SocialFeedModal';
 import { TrophyRoomModal } from './components/TrophyRoomModal';
 import { NegotiationRoomModal } from './components/NegotiationRoomModal';
 import { TrainingModal } from './components/TrainingModal';
-import { TrainingDrillType } from './types/game';
+import { ScoutingModal } from './components/ScoutingModal';
+import { SelecaoCallUpModal } from './components/SelecaoCallUpModal';
 import { playSound } from './utils/audio';
 import { loadGameState, saveGameState } from './utils/storage';
 
@@ -93,6 +97,11 @@ export default function App() {
   const [isTrophyRoomOpen, setIsTrophyRoomOpen] = useState<boolean>(false);
   const [isTrainingModalOpen, setIsTrainingModalOpen] = useState<boolean>(false);
   const [isTrainingAvailable, setIsTrainingAvailable] = useState<boolean>(true);
+  const [isScoutingModalOpen, setIsScoutingModalOpen] = useState<boolean>(false);
+  const [isCalledUpToSelecao, setIsCalledUpToSelecao] = useState<boolean>(
+    () => !!saved?.isCalledUpToSelecao
+  );
+  const [isSelecaoCallUpModalOpen, setIsSelecaoCallUpModalOpen] = useState<boolean>(false);
   const [postMatchModalData, setPostMatchModalData] = useState<{
     isOpen: boolean;
     stats: MatchStats | null;
@@ -135,10 +144,15 @@ export default function App() {
       (d) => d.globalDayIndex >= currentGlobalIndex && d.type === 'MATCH' && d.status !== 'COMPLETED'
     ) || calendarDays.find((d) => d.type === 'MATCH');
 
-  // Rest action (+25 energy)
+  const nextSelecaoMatchDay =
+    calendarDays.find(
+      (d) => d.type === 'MATCH' && d.competition === 'Seleção BR' && d.status === 'PENDING'
+    ) || null;
+
+  // Rest action: recovers 100% of energy as requested!
   const handleRest = () => {
     playSound('cheer');
-    setEnergy((prev) => Math.min(100, prev + 25));
+    setEnergy(100);
   };
 
   // Training action (+1 to hero OVR up to 88 & +$1500)
@@ -171,7 +185,7 @@ export default function App() {
       );
       setCash((c) => c + 1500);
     } else if (day.type === 'REST') {
-      setEnergy((e) => Math.min(100, e + 25));
+      setEnergy(100);
     } else if (day.type === 'EVENT') {
       setCash((c) => c + 2000);
     }
@@ -199,6 +213,7 @@ export default function App() {
       trophies,
       currentClub,
       activeTransferOffers: transferOffers,
+      isCalledUpToSelecao,
     });
   }, [
     avatar,
@@ -212,7 +227,124 @@ export default function App() {
     trophies,
     currentClub,
     transferOffers,
+    isCalledUpToSelecao,
   ]);
+
+  // Recruiting young prospects via Scouting
+  const handleRecruitPlayer = (prospect: ScoutedPlayer) => {
+    const newPlayer: TeamPlayer = {
+      id: prospect.id,
+      name: prospect.name,
+      number: Math.floor(Math.random() * 80) + 17,
+      position: prospect.position,
+      ovr: prospect.ovr,
+      energy: 100,
+      isStarter: false,
+      avatarColor: prospect.avatarColor,
+    };
+
+    setPlayers((prev) => {
+      // Find if we have a non-hero starter in that position with lower OVR, and upgrade them to starter
+      const currentStarter = prev.find(
+        (p) => p.isStarter && p.position === prospect.position && !p.isCustomHero
+      );
+      if (currentStarter && prospect.ovr > currentStarter.ovr) {
+        return prev
+          .map((p) => (p.id === currentStarter.id ? { ...p, isStarter: false } : p))
+          .concat({ ...newPlayer, isStarter: true });
+      }
+      return [...prev, newPlayer];
+    });
+
+    // Social post about new recruit
+    const recruitPost: SocialPost = {
+      id: `post_scout_${Date.now()}`,
+      author: `${currentClub.name} Olheiro Oficial`,
+      authorHandle: `@${currentClub.shortName.toLowerCase().replace(/\s+/g, '')}_olheiro`,
+      avatarIcon: '🔍',
+      badge: 'Clube Oficial',
+      timeAgo: 'Agora',
+      content: `🌟 CONTRATAÇÃO DA BASE: O olheiro garimpou e acertou a contratação de ${prospect.name} (${prospect.ovr} OVR, ${prospect.position}) com luvas de R$ ${prospect.cost.toLocaleString('pt-BR')}! O elenco ganha força para a temporada!`,
+      likes: 1540,
+      retweets: 320,
+      replies: [
+        {
+          id: `rep_scout_${Date.now()}`,
+          author: 'Torcida Dourada',
+          authorAvatar: '👑',
+          isHero: false,
+          content: 'Bela visão do nosso olheiro! O moleque tem muito futuro!',
+          likes: 72,
+          timeAgo: 'Agora',
+        },
+      ],
+    };
+    setSocialPosts((prev) => [recruitPost, ...prev]);
+  };
+
+  const handleSpendCash = (amount: number): boolean => {
+    if (cash < amount) return false;
+    setCash((c) => c - amount);
+    return true;
+  };
+
+  // Check and trigger Seleção Brasileira call-up when playing well
+  const maybeTriggerSelecaoCallUp = (stats: MatchStats) => {
+    if (isCalledUpToSelecao) return;
+
+    const heroPlayer = players.find((p) => p.isCustomHero);
+    const heroOvr = heroPlayer?.ovr || 59;
+    const completedMatches = calendarDays.filter(
+      (d) => d.type === 'MATCH' && d.status === 'COMPLETED'
+    ).length;
+
+    // Trigger call up if rating >= 7.0, or hero scored, or hero ovr >= 62, or at least 1 match played
+    const isDeserving =
+      stats.playerRating >= 7.0 ||
+      stats.playerGoals >= 1 ||
+      heroOvr >= 62 ||
+      completedMatches >= 1;
+
+    if (isDeserving) {
+      setIsCalledUpToSelecao(true);
+      setIsSelecaoCallUpModalOpen(true);
+      playSound('cheer');
+
+      // Unlock Convocação trophy
+      setTrophies((prev) =>
+        prev.map((t) =>
+          t.id === 'trophy_selecao_convocacao'
+            ? { ...t, unlocked: true, unlockedDate: 'Hoje' }
+            : t
+        )
+      );
+
+      // Social feed breaking news
+      const callUpAnnouncement: SocialPost = {
+        id: `post_convocacao_${Date.now()}`,
+        author: 'CBF & Seleção Brasileira',
+        authorHandle: '@cbf_selecao',
+        avatarIcon: '🇧🇷',
+        badge: 'Oficial CBF',
+        timeAgo: 'Agora',
+        content: `🚨 CONVOCAÇÃO HISTÓRICA! O técnico da Seleção Brasileira anunciou a lista oficial e ${avatar.name || 'Gabriel M.'} foi CONVOCADO para defender a Amarelinha! O craque jogará em datas internacionais livres do calendário! 🇧🇷⚽`,
+        likes: 9800,
+        retweets: 3410,
+        replies: [
+          {
+            id: `rep_convocacao_${Date.now()}`,
+            author: 'Torcida Canarinho',
+            authorAvatar: '🇧🇷',
+            isHero: false,
+            content: 'CONVOCAÇÃO MERECIDÍSSIMA! O futebol dele tá de encher os olhos!',
+            likes: 620,
+            timeAgo: 'Agora',
+          },
+        ],
+      };
+      setSocialPosts((prev) => [callUpAnnouncement, ...prev]);
+    }
+  };
 
   // Generate new transfer interest from championship clubs
   const maybeGenerateTransferOffer = (day: CalendarDay) => {
@@ -414,26 +546,54 @@ export default function App() {
         unlockNow = true;
       }
 
+      // 7. Seleção BR - Superclássico (vs Argélia Celeste)
+      if (
+        trophy.id === 'trophy_selecao_superclassico' &&
+        day.competition === 'Seleção BR' &&
+        day.opponent?.name === 'Argélia Celeste' &&
+        isWin
+      ) {
+        unlockNow = true;
+      }
+
+      // 8. Seleção BR - Copa das Nações (Final)
+      if (
+        trophy.id === 'trophy_selecao_copa_nacoes' &&
+        day.competition === 'Seleção BR' &&
+        (day.title.includes('FINAL') || day.matchIndexInComp === 6) &&
+        isWin
+      ) {
+        unlockNow = true;
+      }
+
+      // 9. Seleção BR - Artilheiro Canarinho (3+ goals with Seleção BR)
+      const selecaoGoals = updatedDays
+        .filter((d) => d.competition === 'Seleção BR')
+        .reduce((acc, d) => acc + (d.matchStats?.playerGoals || 0), 0);
+      if (trophy.id === 'trophy_selecao_artilheiro' && selecaoGoals >= 3) {
+        unlockNow = true;
+      }
+
       if (unlockNow) {
         bonusCash += trophy.rewardCash;
         newCelebrationPosts.push({
           id: `post_trophy_${trophy.id}_${Date.now()}`,
-          author: 'Manaus Gold Notícias',
-          authorHandle: '@manausgold_news',
-          avatarIcon: 'trophy',
+          author: day.competition === 'Seleção BR' ? 'Seleção Brasileira Oficial' : 'Manaus Gold Notícias',
+          authorHandle: day.competition === 'Seleção BR' ? '@cbf_oficial' : '@manausgold_news',
+          avatarIcon: day.competition === 'Seleção BR' ? '🇧🇷' : 'trophy',
           badge: 'Clube Oficial',
           timeAgo: 'Agora',
-          content: `🏆 CONQUISTA HISTÓRICA! O time e ${avatar.name || 'Gabriel M.'} conquistaram o troféu: "${trophy.title}"! Bônus de R$ ${trophy.rewardCash.toLocaleString('pt-BR')} adicionado ao clube!`,
-          likes: 1250,
-          retweets: 240,
+          content: `🏆 CONQUISTA HISTÓRICA! ${avatar.name || 'Gabriel M.'} conquistou o troféu: "${trophy.title}"! Bônus de R$ ${trophy.rewardCash.toLocaleString('pt-BR')} creditado!`,
+          likes: 2250,
+          retweets: 480,
           replies: [
             {
               id: `rep_trophy_${Date.now()}`,
-              author: 'Torcida Fúria Dourada',
+              author: 'Torcida Apaixonada',
               authorAvatar: '🔥',
               isHero: false,
-              content: 'MERECIDO DEMAIS! Orgulho da torcida!',
-              likes: 42,
+              content: 'MERECIDO DEMAIS! Orgulho do nosso futebol!',
+              likes: 120,
               timeAgo: 'Agora',
             },
           ],
@@ -476,7 +636,7 @@ export default function App() {
     let heroGoals = 1;
 
     if (rand < baseWinChance) {
-      // Manaus Gold wins
+      // Home wins
       homeScore = Math.floor(Math.random() * 3) + 2; // 2 to 4
       awayScore = Math.floor(Math.random() * 2); // 0 or 1
       heroGoals = Math.min(homeScore, Math.floor(Math.random() * 2) + 1);
@@ -536,16 +696,19 @@ export default function App() {
       )
     );
 
-    // Rewards
+    // Rewards: Playing or simulating consumes exactly 1 energy as requested!
     const isWin = homeScore > awayScore;
     setCash((c) => c + (isWin ? 8500 : 3000));
-    setEnergy((e) => Math.max(20, e - 15));
+    setEnergy((e) => Math.max(0, e - 1));
 
     // Unlock training after playing or simulating a match
     setIsTrainingAvailable(true);
 
     // Evaluate trophies
     evaluateTrophies(day, simStats, isWin);
+
+    // Check and trigger Seleção Brasileira call-up when playing well
+    maybeTriggerSelecaoCallUp(simStats);
 
     // Chance to receive new transfer offer throughout the championship
     if (Math.random() < 0.65 || day.globalDayIndex % 3 === 0) {
@@ -599,15 +762,19 @@ export default function App() {
       )
     );
 
+    // Rewards: Playing consumes exactly 1 energy as requested!
     const isWin = finalStats.homeScore > finalStats.awayScore;
     setCash((c) => c + (isWin ? 8500 : 3000));
-    setEnergy((e) => Math.max(20, e - 15));
+    setEnergy((e) => Math.max(0, e - 1));
 
     // Unlock training after playing or simulating a match
     setIsTrainingAvailable(true);
 
     // Evaluate trophies
     evaluateTrophies(activeMatchDay, finalStats, isWin);
+
+    // Check and trigger Seleção Brasileira call-up when playing well
+    maybeTriggerSelecaoCallUp(finalStats);
 
     // Chance to receive new transfer offer throughout the championship
     if (Math.random() < 0.65 || activeMatchDay.globalDayIndex % 3 === 0) {
@@ -679,6 +846,21 @@ export default function App() {
             }
           }}
           onOpenTraining={() => setIsTrainingModalOpen(true)}
+          onOpenScouting={() => setIsScoutingModalOpen(true)}
+          isCalledUpToSelecao={isCalledUpToSelecao}
+          onPlaySelecaoMatch={(globalIdx) => {
+            const targetIdx = globalIdx ?? nextSelecaoMatchDay?.globalDayIndex;
+            if (targetIdx !== undefined) {
+              handleSelectMatch(targetIdx, 'PLAY');
+            }
+          }}
+          onSimulateSelecaoMatch={(globalIdx) => {
+            const targetIdx = globalIdx ?? nextSelecaoMatchDay?.globalDayIndex;
+            if (targetIdx !== undefined) {
+              handleSelectMatch(targetIdx, 'SIMULATE');
+            }
+          }}
+          nextSelecaoMatchDay={nextSelecaoMatchDay}
           activeTransferOffersCount={transferOffers.filter((o) => o.status === 'PENDING').length}
           pendingTransferOffer={transferOffers.find((o) => o.status === 'PENDING') || null}
           unlockedTrophyCount={trophies.filter((t) => t.unlocked).length}
@@ -727,7 +909,20 @@ export default function App() {
         <MatchSimulationView
           opponent={activeMatchDay.opponent}
           isHome={activeMatchDay.isHome !== false}
-          avatar={avatar}
+          avatar={
+            activeMatchDay.competition === 'Seleção BR'
+              ? { ...avatar, jerseyColor: '#FACC15' }
+              : avatar
+          }
+          homeTeamName={
+            activeMatchDay.competition === 'Seleção BR'
+              ? 'Seleção Brasileira'
+              : currentClub.name
+          }
+          homeTeamBadge={
+            activeMatchDay.competition === 'Seleção BR' ? '🇧🇷' : currentClub.badge
+          }
+          competitionName={activeMatchDay.competition}
           players={players}
           tactics={tactics}
           onFinishMatch={handleFinishMatch}
@@ -816,6 +1011,23 @@ export default function App() {
         onClose={() => setIsTrainingModalOpen(false)}
         avatar={avatar}
         onFinishTrainingReward={handleFinishTrainingReward}
+      />
+
+      {/* MODAL: Olheiro / Scouting de Jovens Talentos */}
+      <ScoutingModal
+        isOpen={isScoutingModalOpen}
+        onClose={() => setIsScoutingModalOpen(false)}
+        userCash={cash}
+        teamPlayers={players}
+        onRecruitPlayer={handleRecruitPlayer}
+        onSpendCash={handleSpendCash}
+      />
+
+      {/* MODAL: Convocação Oficial para a Seleção Brasileira */}
+      <SelecaoCallUpModal
+        isOpen={isSelecaoCallUpModalOpen}
+        avatar={avatar}
+        onClose={() => setIsSelecaoCallUpModalOpen(false)}
       />
     </div>
   );

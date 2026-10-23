@@ -3,6 +3,7 @@ import {
   CalendarDay,
   ClubInfo,
   OpponentTeam,
+  ScoutedPlayer,
   SocialPost,
   TacticsSettings,
   TeamPlayer,
@@ -104,6 +105,33 @@ export const LIBERTUDORES_OPPONENTS: OpponentTeam[] = [
   { id: 'pab', name: 'Porto Alegre Blue', shortName: 'PA Blue', badge: '⚡', primaryColor: '#2563EB', secondaryColor: '#000000', ovr: 76, city: 'Porto Alegre', starPlayer: 'Suárez Jr.' },
 ];
 
+// Seleção Brasileira (Amarelinha) Team Profile
+export const SELECAO_BR_TEAM: OpponentTeam = {
+  id: 'selecao_br',
+  name: 'Seleção Brasileira',
+  shortName: 'Seleção BR',
+  badge: '🇧🇷',
+  primaryColor: '#FACC15', // Canarinho Yellow
+  secondaryColor: '#15803D', // Green accents
+  ovr: 86,
+  city: 'Rio de Janeiro / Brasília',
+  starPlayer: 'Gabriel M. & Vini Jr.',
+};
+
+// Seleções Internacionais com Nomes Fictícios como solicitado
+export const FICTIONAL_NATIONAL_TEAMS: OpponentTeam[] = [
+  { id: 'nat_arg', name: 'Argélia Celeste', shortName: 'Arg. Celeste', badge: '☀️', primaryColor: '#7DD3FC', secondaryColor: '#FFFFFF', ovr: 85, city: 'Pampas Fictícia', starPlayer: 'Lionelito' },
+  { id: 'nat_ger', name: 'Germânia Panzer', shortName: 'Germânia Pz.', badge: '🦅', primaryColor: '#FFFFFF', secondaryColor: '#000000', ovr: 84, city: 'Berlim Fictícia', starPlayer: 'Müller Von' },
+  { id: 'nat_fra', name: 'Franco Real', shortName: 'Franco Real', badge: '🐓', primaryColor: '#1E40AF', secondaryColor: '#DC2626', ovr: 86, city: 'Paris Fictícia', starPlayer: 'Kylian Du' },
+  { id: 'nat_esp', name: 'Ibérica Imperial', shortName: 'Ibérica Imp.', badge: '🐂', primaryColor: '#DC2626', secondaryColor: '#FACC15', ovr: 83, city: 'Madrid Fictícia', starPlayer: 'Pedrito' },
+  { id: 'nat_ing', name: 'Britânia Real', shortName: 'Britânia R.', badge: '🦁', primaryColor: '#F8FAFC', secondaryColor: '#DC2626', ovr: 83, city: 'Londres Fictícia', starPlayer: 'Belling Real' },
+  { id: 'nat_ita', name: 'Azzurra Imperial', shortName: 'Azzurra Imp.', badge: '⚔️', primaryColor: '#1D4ED8', secondaryColor: '#FFFFFF', ovr: 82, city: 'Roma Fictícia', starPlayer: 'Barella C.' },
+  { id: 'nat_hol', name: 'Laranja Mecânica dos Países Baixos', shortName: 'Laranja Mec.', badge: '🌷', primaryColor: '#EA580C', secondaryColor: '#000000', ovr: 82, city: 'Amsterdã Fictícia', starPlayer: 'Van Dijk Jr.' },
+  { id: 'nat_por', name: 'Portugal Navegantes', shortName: 'Navegantes', badge: '🧭', primaryColor: '#991B1B', secondaryColor: '#15803D', ovr: 83, city: 'Lisboa Fictícia', starPlayer: 'Cristiano Dos' },
+  { id: 'nat_uru', name: 'Charrúa Guerreira', shortName: 'Charrúa G.', badge: '🏹', primaryColor: '#38BDF8', secondaryColor: '#000000', ovr: 81, city: 'Montevidéu Fictícia', starPlayer: 'Valverde L.' },
+  { id: 'nat_jap', name: 'Samurais do Sol', shortName: 'Samurais Sol', badge: '⛩️', primaryColor: '#1E3A8A', secondaryColor: '#DC2626', ovr: 80, city: 'Tóquio Fictícia', starPlayer: 'Mitoma S.' },
+];
+
 export const MONTH_NAMES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho'];
 export const DAYS_PER_MONTH = 30;
 
@@ -141,6 +169,20 @@ export function generateFullCalendar(): CalendarDay[] {
         title: `${stageName} vs ${opp.shortName}`,
         status: globalIndex === 2 ? 'CURRENT' : 'PENDING',
       });
+    } else if (d === 24) {
+      allDays.push({
+        dayNumber: d,
+        monthName: 'Janeiro',
+        globalDayIndex: globalIndex++,
+        type: 'MATCH',
+        competition: 'Seleção BR',
+        isNationalTeamMatch: true,
+        matchIndexInComp: 1,
+        opponent: FICTIONAL_NATIONAL_TEAMS[7],
+        isHome: true,
+        title: '🇧🇷 Seleção BR vs Portugal Navegantes · Amistoso de Convocação',
+        status: 'PENDING',
+      });
     } else if (d % 3 === 0) {
       allDays.push({
         dayNumber: d,
@@ -171,16 +213,35 @@ export function generateFullCalendar(): CalendarDay[] {
     }
   }
 
-  // 2. FEVEREIRO, MARÇO, ABRIL -> CAMPEONATO NACIONAL (18 partidas com os times do Campeonato)
+  // 2. FEVEREIRO, MARÇO, ABRIL -> CAMPEONATO NACIONAL + JOGOS DA SELEÇÃO BR NOS DIAS LIVRES
   const campNacionalMonths = ['Fevereiro', 'Março', 'Abril'];
   let compMatchCounter = 0;
 
+  // Seleção BR fixtures scheduled on days WITHOUT club fixtures (e.g. days 16 & 26 in Feb, 11 & 21 in Mar, 11 & 26 in Apr)
+  const selecaoFixtures: Record<string, Record<number, { opp: OpponentTeam; title: string; matchIdx: number }>> = {
+    Fevereiro: {
+      16: { opp: FICTIONAL_NATIONAL_TEAMS[0], title: '🇧🇷 Seleção BR vs Argélia Celeste · Superclássico Amistoso', matchIdx: 2 },
+      26: { opp: FICTIONAL_NATIONAL_TEAMS[1], title: '🇧🇷 Seleção BR vs Germânia Panzer · Desafio Intercontinental', matchIdx: 3 },
+    },
+    Março: {
+      11: { opp: FICTIONAL_NATIONAL_TEAMS[2], title: '🇧🇷 Seleção BR vs Franco Real · Copa das Nações Rodada 1', matchIdx: 4 },
+      21: { opp: FICTIONAL_NATIONAL_TEAMS[3], title: '🇧🇷 Seleção BR vs Ibérica Imperial · Copa das Nações Rodada 2', matchIdx: 5 },
+    },
+    Abril: {
+      11: { opp: FICTIONAL_NATIONAL_TEAMS[4], title: '🇧🇷 Seleção BR vs Britânia Real · Copa das Nações Semifinal', matchIdx: 6 },
+      26: { opp: FICTIONAL_NATIONAL_TEAMS[0], title: '🏆 🇧🇷 GRANDE FINAL DA COPA DAS NAÇÕES: Seleção BR vs Argélia Celeste', matchIdx: 7 },
+    },
+  };
+
   campNacionalMonths.forEach((month) => {
-    // 6 match days per month = 18 matches total
+    // 6 club match days per month = 18 club matches total
     const monthMatchDays = [4, 9, 14, 19, 24, 29];
+    const monthSelecaoMap = selecaoFixtures[month] || {};
 
     for (let d = 1; d <= DAYS_PER_MONTH; d++) {
       const matchPos = monthMatchDays.indexOf(d);
+
+      // Check if it's a club match day
       if (matchPos !== -1 && compMatchCounter < 18) {
         const opp = CAMP_NACIONAL_OPPONENTS[compMatchCounter % CAMP_NACIONAL_OPPONENTS.length];
         const matchNum = compMatchCounter + 1;
@@ -196,6 +257,22 @@ export function generateFullCalendar(): CalendarDay[] {
           opponent: opp,
           isHome: matchNum % 2 === 0,
           title: `Campeonato Nacional · Rodada ${matchNum}/18 vs ${opp.shortName}`,
+          status: 'PENDING',
+        });
+      } else if (monthSelecaoMap[d]) {
+        // Seleção BR International match on free day without club match
+        const selFixture = monthSelecaoMap[d];
+        allDays.push({
+          dayNumber: d,
+          monthName: month,
+          globalDayIndex: globalIndex++,
+          type: 'MATCH',
+          competition: 'Seleção BR',
+          isNationalTeamMatch: true,
+          matchIndexInComp: selFixture.matchIdx,
+          opponent: selFixture.opp,
+          isHome: true,
+          title: selFixture.title,
           status: 'PENDING',
         });
       } else if (d % 3 === 0) {
@@ -236,14 +313,30 @@ export function generateFullCalendar(): CalendarDay[] {
     // Fill days before match day
     const prevDay = idx === 0 ? 1 : maioMatchDays[idx - 1] + 1;
     for (let d = prevDay; d < matchDay; d++) {
-      allDays.push({
-        dayNumber: d,
-        monthName: 'Maio',
-        globalDayIndex: globalIndex++,
-        type: d % 3 === 0 ? 'TRAINING' : d % 5 === 0 ? 'EVENT' : 'REST',
-        title: d % 3 === 0 ? 'Treino Continental Pré-Jogo' : 'Concentração & Recuperação',
-        status: 'PENDING',
-      });
+      if (d === 16) {
+        allDays.push({
+          dayNumber: d,
+          monthName: 'Maio',
+          globalDayIndex: globalIndex++,
+          type: 'MATCH',
+          competition: 'Seleção BR',
+          isNationalTeamMatch: true,
+          matchIndexInComp: 8,
+          opponent: FICTIONAL_NATIONAL_TEAMS[5],
+          isHome: true,
+          title: '🇧🇷 Seleção BR vs Azzurra Imperial · Amistoso Preparatório',
+          status: 'PENDING',
+        });
+      } else {
+        allDays.push({
+          dayNumber: d,
+          monthName: 'Maio',
+          globalDayIndex: globalIndex++,
+          type: d % 3 === 0 ? 'TRAINING' : d % 5 === 0 ? 'EVENT' : 'REST',
+          title: d % 3 === 0 ? 'Treino Continental Pré-Jogo' : 'Concentração & Recuperação',
+          status: 'PENDING',
+        });
+      }
     }
 
     const opp = LIBERTUDORES_OPPONENTS[idx % LIBERTUDORES_OPPONENTS.length];
@@ -282,14 +375,30 @@ export function generateFullCalendar(): CalendarDay[] {
   let lastJunhoDay = 1;
   junhoKnockoutDays.forEach((ko) => {
     for (let d = lastJunhoDay; d < ko.day; d++) {
-      allDays.push({
-        dayNumber: d,
-        monthName: 'Junho',
-        globalDayIndex: globalIndex++,
-        type: d % 3 === 0 ? 'TRAINING' : d % 4 === 0 ? 'EVENT' : 'REST',
-        title: d % 3 === 0 ? 'Treino Tático Libertudores' : 'Foco na Glória Eterna',
-        status: 'PENDING',
-      });
+      if (d === 8) {
+        allDays.push({
+          dayNumber: d,
+          monthName: 'Junho',
+          globalDayIndex: globalIndex++,
+          type: 'MATCH',
+          competition: 'Seleção BR',
+          isNationalTeamMatch: true,
+          matchIndexInComp: 9,
+          opponent: FICTIONAL_NATIONAL_TEAMS[6],
+          isHome: true,
+          title: '🇧🇷 Seleção BR vs Laranja Mecânica · Amistoso de Gala',
+          status: 'PENDING',
+        });
+      } else {
+        allDays.push({
+          dayNumber: d,
+          monthName: 'Junho',
+          globalDayIndex: globalIndex++,
+          type: d % 3 === 0 ? 'TRAINING' : d % 4 === 0 ? 'EVENT' : 'REST',
+          title: d % 3 === 0 ? 'Treino Tático Libertudores' : 'Foco na Glória Eterna',
+          status: 'PENDING',
+        });
+      }
     }
     allDays.push({
       dayNumber: ko.day,
@@ -394,6 +503,51 @@ export const INITIAL_TROPHIES: TrophyItem[] = [
     tier: 'GOLD',
     rewardCash: 20000,
     rewardXp: 250,
+  },
+  // Troféus Oficiais da Seleção Brasileira
+  {
+    id: 'trophy_selecao_convocacao',
+    title: 'Convocação para a Amarelinha',
+    category: 'SELECAO_BR',
+    description: 'Receba a honrosa convocação oficial para vestir a camisa da Seleção Brasileira!',
+    unlocked: false,
+    icon: '🇧🇷',
+    tier: 'GOLD',
+    rewardCash: 40000,
+    rewardXp: 600,
+  },
+  {
+    id: 'trophy_selecao_superclassico',
+    title: 'Superclássico das Américas',
+    category: 'SELECAO_BR',
+    description: 'Vença a grande decisão contra a temida Argélia Celeste vestindo a camisa da Seleção BR!',
+    unlocked: false,
+    icon: '👑🇧🇷',
+    tier: 'PLATINUM',
+    rewardCash: 80000,
+    rewardXp: 1200,
+  },
+  {
+    id: 'trophy_selecao_copa_nacoes',
+    title: 'Copa das Nações da Seleção BR',
+    category: 'SELECAO_BR',
+    description: 'Levante o troféu internacional da Copa das Nações com a Seleção Brasileira!',
+    unlocked: false,
+    icon: '🏆🇧🇷',
+    tier: 'PLATINUM',
+    rewardCash: 150000,
+    rewardXp: 1500,
+  },
+  {
+    id: 'trophy_selecao_artilheiro',
+    title: 'Artilheiro Canarinho',
+    category: 'SELECAO_BR',
+    description: 'Marque 3 ou mais gols pela Seleção Brasileira e torne-se ídolo nacional!',
+    unlocked: false,
+    icon: '👟🇧🇷',
+    tier: 'GOLD',
+    rewardCash: 50000,
+    rewardXp: 800,
   },
 ];
 
@@ -506,4 +660,125 @@ export function createTransferOffer(
 export const INITIAL_TRANSFER_OFFERS: TransferOffer[] = [
   createTransferOffer(TACA_SAMBA_OPPONENTS[0], 60, 1), // SP White
 ];
+
+// Pool de jovens promessas para o sistema de Olheiro (Scouting)
+export const INITIAL_SCOUTED_PROSPECTS: ScoutedPlayer[] = [
+  {
+    id: 'scout_p1',
+    name: 'Kauã Ray',
+    age: 17,
+    position: 'ATA',
+    ovr: 72,
+    potential: 88,
+    cost: 11000,
+    avatarColor: '#F59E0B',
+    specialTrait: 'Drible Veloz & Finalização Curva',
+  },
+  {
+    id: 'scout_p2',
+    name: 'Murilo Paredão',
+    age: 18,
+    position: 'ZAG',
+    ovr: 71,
+    potential: 86,
+    cost: 9500,
+    avatarColor: '#10B981',
+    specialTrait: 'Desarme Preciso & Força Aérea',
+  },
+  {
+    id: 'scout_p3',
+    name: 'Pedrinho da Vila',
+    age: 16,
+    position: 'MEI',
+    ovr: 75,
+    potential: 92,
+    cost: 16000,
+    avatarColor: '#3B82F6',
+    specialTrait: 'Passe Milimétrico & Trivelas',
+  },
+  {
+    id: 'scout_p4',
+    name: 'Breno Falcão',
+    age: 17,
+    position: 'GOL',
+    ovr: 70,
+    potential: 85,
+    cost: 8500,
+    avatarColor: '#8B5CF6',
+    specialTrait: 'Reflexo Felino em Pênaltis',
+  },
+  {
+    id: 'scout_p5',
+    name: 'Thiaguinho Nitro',
+    age: 18,
+    position: 'LAT',
+    ovr: 73,
+    potential: 87,
+    cost: 12500,
+    avatarColor: '#EC4899',
+    specialTrait: 'Explosão Física & Cruzamento Perfeito',
+  },
+  {
+    id: 'scout_p6',
+    name: 'Kaiky Fenômeno',
+    age: 17,
+    position: 'ATA',
+    ovr: 77,
+    potential: 94,
+    cost: 24000,
+    avatarColor: '#EAB308',
+    specialTrait: 'Chute Atômico & Frieza na Área',
+  },
+];
+
+const SCOUT_FIRST_NAMES = [
+  'Kauã', 'Matheuzinho', 'Endrickson', 'Vitinho', 'Pedrinho', 'Igor', 'Davi', 'Luquinhas',
+  'Rayan', 'Loran', 'Estêvão', 'Marlon', 'Riquelme', 'Bernardo', 'Cauã', 'Guilherme'
+];
+const SCOUT_LAST_NAMES = [
+  'da Vila', 'Mágico', 'Rai', 'Veloz', 'Paredão', 'Falcão', 'Guerreiro', 'Pé de Ouro',
+  'Fenômeno', 'Silva Jr.', 'Dourado', 'Show', 'Santos', 'Rocha', 'Trovão', 'Alves'
+];
+const SCOUT_TRAITS = [
+  'Drible Desconcertante', 'Chute Colocado no Ângulo', 'Visão Panorâmica', 'Desarme Cirúrgico',
+  'Arranque Imparável', 'Muralha Debaixo das Traves', 'Cobrador de Falta Nato', 'Cabeceio Fulminante'
+];
+const SCOUT_COLORS = ['#EF4444', '#F59E0B', '#10B981', '#06B6D4', '#3B82F6', '#8B5CF6', '#EC4899'];
+const POSITIONS: ('GOL' | 'ZAG' | 'LAT' | 'VOL' | 'MEI' | 'ATA')[] = ['GOL', 'ZAG', 'LAT', 'VOL', 'MEI', 'ATA'];
+
+export function generateScoutedTalents(tier: 'REGIONAL' | 'NACIONAL' | 'INTERNACIONAL'): ScoutedPlayer[] {
+  const count = 3;
+  const list: ScoutedPlayer[] = [];
+
+  const baseOvr = tier === 'REGIONAL' ? 66 : tier === 'NACIONAL' ? 72 : 77;
+  const ovrSpread = tier === 'REGIONAL' ? 5 : tier === 'NACIONAL' ? 6 : 7;
+  const basePotential = tier === 'REGIONAL' ? 82 : tier === 'NACIONAL' ? 88 : 93;
+  const baseCost = tier === 'REGIONAL' ? 6000 : tier === 'NACIONAL' ? 14000 : 26000;
+
+  for (let i = 0; i < count; i++) {
+    const fn = SCOUT_FIRST_NAMES[Math.floor(Math.random() * SCOUT_FIRST_NAMES.length)];
+    const ln = SCOUT_LAST_NAMES[Math.floor(Math.random() * SCOUT_LAST_NAMES.length)];
+    const pos = POSITIONS[Math.floor(Math.random() * POSITIONS.length)];
+    const trait = SCOUT_TRAITS[Math.floor(Math.random() * SCOUT_TRAITS.length)];
+    const color = SCOUT_COLORS[Math.floor(Math.random() * SCOUT_COLORS.length)];
+    const ovr = baseOvr + Math.floor(Math.random() * ovrSpread);
+    const potential = Math.min(99, basePotential + Math.floor(Math.random() * 5));
+    const age = 16 + Math.floor(Math.random() * 4); // 16 to 19
+    const cost = baseCost + (ovr - 65) * 1500 + Math.floor(Math.random() * 2000);
+
+    list.push({
+      id: `scout_gen_${Date.now()}_${i}_${Math.floor(Math.random() * 1000)}`,
+      name: `${fn} ${ln}`,
+      age,
+      position: pos,
+      ovr,
+      potential,
+      cost,
+      avatarColor: color,
+      specialTrait: trait,
+    });
+  }
+
+  return list;
+}
 

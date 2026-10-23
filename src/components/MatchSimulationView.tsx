@@ -20,6 +20,9 @@ interface MatchSimulationViewProps {
   tactics: TacticsSettings;
   onFinishMatch: (finalStats: MatchStats) => void;
   onBackToCalendar: () => void;
+  homeTeamName?: string;
+  homeTeamBadge?: string;
+  competitionName?: string;
 }
 
 export const MatchSimulationView: React.FC<MatchSimulationViewProps> = ({
@@ -30,6 +33,9 @@ export const MatchSimulationView: React.FC<MatchSimulationViewProps> = ({
   tactics,
   onFinishMatch,
   onBackToCalendar,
+  homeTeamName = 'Manaus Gold',
+  homeTeamBadge = '🦁',
+  competitionName,
 }) => {
   const [minute, setMinute] = useState<number>(0);
   const [homeScore, setHomeScore] = useState<number>(0);
@@ -308,7 +314,7 @@ export const MatchSimulationView: React.FC<MatchSimulationViewProps> = ({
           avatar={avatar}
           onGoalScored={handleHighlightGoal}
           onHighlightFinished={handleHighlightFinished}
-          homeTeamName="Manaus Gold"
+          homeTeamName={homeTeamName}
           awayTeamName={opponent.name}
           currentMinute={minute}
           scenario={highlightScenario}
@@ -321,11 +327,17 @@ export const MatchSimulationView: React.FC<MatchSimulationViewProps> = ({
           <div className="w-full flex flex-col gap-2 z-20">
             {/* Team Names & Big Score Header */}
             <div className="grid grid-cols-3 items-center bg-[#0B152F] border border-blue-500/20 rounded-xl px-2 py-1.5 shadow-lg">
-              {/* Manaus Gold */}
-              <div className="flex items-center gap-2 bg-[#F59E0B] text-slate-950 font-bold px-3 py-1.5 rounded-lg shadow-sm">
-                <span className="text-base">🦁</span>
+              {/* Home Team */}
+              <div
+                className="flex items-center gap-2 font-bold px-3 py-1.5 rounded-lg shadow-sm"
+                style={{
+                  backgroundColor: competitionName === 'Seleção BR' ? '#FACC15' : '#F59E0B',
+                  color: '#020617',
+                }}
+              >
+                <span className="text-base">{homeTeamBadge}</span>
                 <span className="text-xs sm:text-sm font-heading font-black tracking-wide truncate">
-                  MANAUS GOLD
+                  {homeTeamName.toUpperCase()}
                 </span>
               </div>
 
