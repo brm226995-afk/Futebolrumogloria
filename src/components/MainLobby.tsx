@@ -109,15 +109,37 @@ export const MainLobby: React.FC<MainLobbyProps> = ({
   const isClubMatchDay =
     currentDayData.type === 'MATCH' && currentDayData.competition !== 'Seleção BR';
 
-  // Target upcoming or current Seleção BR fixture
+  // Target upcoming or current Seleção BR fixture (guaranteed fallback if called up)
   const isTodaySelecao =
     currentDayData.type === 'MATCH' && currentDayData.competition === 'Seleção BR';
-  const targetSelecaoMatch = isTodaySelecao ? currentDayData : nextSelecaoMatchDay;
+  const activeSelecaoMatch: CalendarDay =
+    (isTodaySelecao ? currentDayData : nextSelecaoMatchDay) || {
+      dayNumber: currentDayData.dayNumber,
+      monthName: currentDayData.monthName,
+      globalDayIndex: currentDayData.globalDayIndex,
+      type: 'MATCH',
+      competition: 'Seleção BR',
+      isNationalTeamMatch: true,
+      opponent: {
+        id: 'nat_arg',
+        name: 'Argélia Celeste',
+        shortName: 'Arg. Celeste',
+        badge: '☀️',
+        primaryColor: '#7DD3FC',
+        secondaryColor: '#FFFFFF',
+        ovr: 85,
+        city: 'Pampas Fictícia',
+        starPlayer: 'Lionelito',
+      },
+      title: '🇧🇷 Seleção BR vs Argélia Celeste · Superclássico Amistoso',
+      isHome: true,
+      status: 'PENDING',
+    };
 
   return (
     <div className="relative w-full min-h-screen bg-[#070D1F] flex flex-col justify-between overflow-hidden select-none">
       {/* Top Status Bar */}
-      <header className="relative z-30 w-full max-w-xl mx-auto px-3 pt-3 pb-2 flex items-center justify-between">
+      <header className="relative z-30 w-full max-w-xl mx-auto px-3 pt-3 pb-1.5 flex items-center justify-between">
         {/* Left: Overall Shield & Player Name */}
         <div className="flex items-center gap-1.5">
           <div className="relative flex items-center bg-[#15254A]/90 border border-blue-400/30 rounded-r-xl pr-3 pl-1 py-1 shadow-lg backdrop-blur-xs">
@@ -159,29 +181,10 @@ export const MainLobby: React.FC<MainLobbyProps> = ({
         </div>
       </header>
 
-      {/* Main Avatar Stage & Right Floating Quick Icons */}
-      <main className="relative flex-1 w-full max-w-xl mx-auto flex flex-col justify-end overflow-hidden">
-        {/* 2D/2.5D Avatar with touch/mouse rotation drag */}
-        <div
-          className="absolute inset-0 cursor-ew-resize touch-none"
-          onPointerDown={(e) => {
-            setIsDraggingAvatar(true);
-            dragAvatarStartX.current = e.clientX;
-            dragAvatarStartAngle.current = avatarRotation;
-          }}
-          onPointerMove={(e) => {
-            if (!isDraggingAvatar) return;
-            const deltaX = e.clientX - dragAvatarStartX.current;
-            setAvatarRotation(Math.round(dragAvatarStartAngle.current + deltaX * 1.1));
-          }}
-          onPointerUp={() => setIsDraggingAvatar(false)}
-          onPointerCancel={() => setIsDraggingAvatar(false)}
-        >
-          <AvatarDisplay config={avatar} showBackdrop={true} rotationY={avatarRotation} />
-        </div>
-
-        {/* Interactive Floating Rotation & Athlete Customization Toolbar Pill */}
-        <div className="absolute left-1/2 -translate-x-1/2 bottom-[14.5rem] z-20 flex items-center gap-1.5 sm:gap-2 bg-[#09152E]/95 border border-blue-400/50 rounded-full px-3 py-1.5 shadow-2xl backdrop-blur-md">
+      {/* Main Avatar Stage & Floating Controls */}
+      <main className="relative flex-1 w-full max-w-xl mx-auto flex flex-col justify-between overflow-hidden">
+        {/* Floating Rotation & Athlete Customization Toolbar Pill - Prominently placed at top so it's NEVER hidden */}
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1 sm:gap-1.5 bg-[#09152E]/95 border border-blue-400/50 rounded-full px-2.5 py-1 shadow-2xl backdrop-blur-md">
           <button
             type="button"
             onClick={() => {
@@ -189,7 +192,7 @@ export const MainLobby: React.FC<MainLobbyProps> = ({
               setAvatarRotation((r) => r - 45);
             }}
             className="w-7 h-7 rounded-full bg-slate-800 hover:bg-blue-600 text-white flex items-center justify-center transition-all active:scale-90"
-            title="Virar p/ Esquerda"
+            title="Virar Atleta p/ Esquerda"
           >
             <RotateCcw className="w-3.5 h-3.5" />
           </button>
@@ -200,8 +203,8 @@ export const MainLobby: React.FC<MainLobbyProps> = ({
               playSound('click');
               setAvatarRotation(0);
             }}
-            className="text-[10px] font-mono font-bold text-slate-300 hover:text-white flex items-center gap-1 px-1"
-            title="Centralizar de Frente"
+            className="text-[10px] font-mono font-bold text-slate-300 hover:text-white flex items-center gap-0.5 px-1"
+            title="Centralizar Atleta de Frente"
           >
             <span className="text-amber-400">↺</span>
             <span className="text-cyan-300">{Math.round(((avatarRotation % 360) + 360) % 360)}°</span>
@@ -214,14 +217,14 @@ export const MainLobby: React.FC<MainLobbyProps> = ({
               setAvatarRotation((r) => r + 45);
             }}
             className="w-7 h-7 rounded-full bg-slate-800 hover:bg-blue-600 text-white flex items-center justify-center transition-all active:scale-90"
-            title="Virar p/ Direita"
+            title="Virar Atleta p/ Direita"
           >
             <RotateCcw className="w-3.5 h-3.5 -scale-x-100" />
           </button>
 
           <div className="w-[1px] h-4 bg-blue-400/30 mx-0.5" />
 
-          {/* EDITAR ATLETA button neatly integrated */}
+          {/* EDITAR ATLETA button */}
           <button
             type="button"
             onClick={() => {
@@ -237,7 +240,7 @@ export const MainLobby: React.FC<MainLobbyProps> = ({
         </div>
 
         {/* Right Floating Vertical Buttons */}
-        <div className="absolute right-3 top-4 z-20 flex flex-col gap-2.5">
+        <div className="absolute right-2.5 top-12 z-30 flex flex-col gap-2">
           {/* Olheiro / Scouting button */}
           <button
             type="button"
@@ -334,8 +337,29 @@ export const MainLobby: React.FC<MainLobbyProps> = ({
           </button>
         </div>
 
+        {/* Contained & Scaled Avatar Stage (diluted photo size so it doesn't take over or get hidden by cards) */}
+        <div
+          className="relative flex-1 w-full max-h-[36vh] sm:max-h-[42vh] flex items-center justify-center cursor-ew-resize touch-none pt-10 pb-1 overflow-hidden"
+          onPointerDown={(e) => {
+            setIsDraggingAvatar(true);
+            dragAvatarStartX.current = e.clientX;
+            dragAvatarStartAngle.current = avatarRotation;
+          }}
+          onPointerMove={(e) => {
+            if (!isDraggingAvatar) return;
+            const deltaX = e.clientX - dragAvatarStartX.current;
+            setAvatarRotation(Math.round(dragAvatarStartAngle.current + deltaX * 1.1));
+          }}
+          onPointerUp={() => setIsDraggingAvatar(false)}
+          onPointerCancel={() => setIsDraggingAvatar(false)}
+        >
+          <div className="w-full h-full max-w-[210px] sm:max-w-[250px] flex items-center justify-center">
+            <AvatarDisplay config={avatar} showBackdrop={true} rotationY={avatarRotation} />
+          </div>
+        </div>
+
         {/* Matchup & Action Card - Compact Redesign */}
-        <div className="relative z-20 w-full px-3 pb-1">
+        <div className="relative z-20 w-full px-3 pb-1 shrink-0">
           {/* Energy Warning / Recovery Toast */}
           {energyToast && (
             <div className="mb-1 py-1.5 px-3 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-lg text-center text-[11px] font-bold shadow-lg animate-fade-in flex items-center justify-center gap-1.5 border border-cyan-300/40">
@@ -355,18 +379,14 @@ export const MainLobby: React.FC<MainLobbyProps> = ({
                       <span>SELEÇÃO BRASILEIRA</span>
                       <span className="bg-yellow-400 text-slate-950 px-1 py-0.2 rounded text-[8px] font-extrabold">CONVOCADO</span>
                     </div>
-                    <div className="text-[9px] text-slate-300 font-medium">
-                      {targetSelecaoMatch
-                        ? `${targetSelecaoMatch.title}`
-                        : 'Próxima convocação internacional em breve'}
+                    <div className="text-[9px] text-slate-300 font-medium truncate max-w-[220px]">
+                      {activeSelecaoMatch.title}
                     </div>
                   </div>
                 </div>
-                {targetSelecaoMatch && (
-                  <span className="text-[9px] font-bold text-yellow-300 font-mono bg-black/50 px-1.5 py-0.5 rounded border border-yellow-500/30">
-                    {targetSelecaoMatch.monthName} · D{targetSelecaoMatch.dayNumber}
-                  </span>
-                )}
+                <span className="text-[9px] font-bold text-yellow-300 font-mono bg-black/50 px-1.5 py-0.5 rounded border border-yellow-500/30 shrink-0">
+                  {activeSelecaoMatch.monthName} · D{activeSelecaoMatch.dayNumber}
+                </span>
               </div>
 
               {/* Action Button: ONLY available when it is NOT a club match day! */}
@@ -385,7 +405,7 @@ export const MainLobby: React.FC<MainLobbyProps> = ({
                     <span>Hoje é dia de jogo pelo clube ({currentClub?.name || 'Seu Clube'}). A Seleção só joga em dias livres!</span>
                   </div>
                 </div>
-              ) : targetSelecaoMatch ? (
+              ) : (
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center gap-1.5">
                     <button
@@ -398,15 +418,11 @@ export const MainLobby: React.FC<MainLobbyProps> = ({
                           return;
                         }
                         playSound('whistle');
-                        if (onPlaySelecaoMatch) {
-                          onPlaySelecaoMatch(targetSelecaoMatch.globalDayIndex);
-                        } else {
-                          onEnterField();
-                        }
+                        onPlaySelecaoMatch?.(activeSelecaoMatch.globalDayIndex);
                       }}
-                      className="flex-1 py-1.5 px-2 bg-gradient-to-r from-yellow-400 via-amber-400 to-emerald-500 hover:from-yellow-300 hover:to-emerald-400 rounded-lg text-slate-950 font-heading font-black text-[11px] uppercase tracking-wider shadow-lg shadow-yellow-500/20 transition-all hover:scale-[1.01] active:scale-95 flex items-center justify-center gap-1.5"
+                      className="flex-1 py-2 px-2.5 bg-gradient-to-r from-yellow-400 via-amber-400 to-emerald-500 hover:from-yellow-300 hover:to-emerald-400 rounded-lg text-slate-950 font-heading font-black text-xs uppercase tracking-wider shadow-lg shadow-yellow-500/25 transition-all hover:scale-[1.01] active:scale-95 flex items-center justify-center gap-1.5 animate-pulse"
                     >
-                      <span className="text-sm">🇧🇷</span>
+                      <span className="text-base">🇧🇷</span>
                       <span>JOGAR PARTIDA DA SELEÇÃO BR</span>
                     </button>
                     {onSimulateSelecaoMatch && (
@@ -420,9 +436,9 @@ export const MainLobby: React.FC<MainLobbyProps> = ({
                             return;
                           }
                           playSound('whistle');
-                          onSimulateSelecaoMatch(targetSelecaoMatch.globalDayIndex);
+                          onSimulateSelecaoMatch(activeSelecaoMatch.globalDayIndex);
                         }}
-                        className="py-1.5 px-2.5 bg-emerald-700/90 hover:bg-emerald-600 border border-emerald-400/40 rounded-lg text-white font-heading font-bold text-[10px] uppercase tracking-wide transition-all active:scale-95 flex items-center gap-1"
+                        className="py-2 px-2.5 bg-emerald-700/90 hover:bg-emerald-600 border border-emerald-400/40 rounded-lg text-white font-heading font-bold text-[10px] uppercase tracking-wide transition-all active:scale-95 flex items-center gap-1 shrink-0"
                         title="Simular Partida da Seleção BR (Gasta 1 de energia)"
                       >
                         <Zap className="w-3 h-3 text-yellow-300" />
@@ -434,10 +450,6 @@ export const MainLobby: React.FC<MainLobbyProps> = ({
                     <span>✅</span>
                     <span>Dia livre no clube! Você está 100% liberado para jogar pela Seleção Brasileira.</span>
                   </div>
-                </div>
-              ) : (
-                <div className="text-[9px] text-yellow-200/90 text-center py-1">
-                  🇧🇷 Todas as partidas da convocação atual foram disputadas! Aguarde os próximos amistosos internacionais.
                 </div>
               )}
             </div>

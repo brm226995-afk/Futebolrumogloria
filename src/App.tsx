@@ -58,9 +58,33 @@ export default function App() {
   const [avatar, setAvatar] = useState<AvatarConfig>(() => saved?.avatar || INITIAL_AVATAR);
   const [players, setPlayers] = useState<TeamPlayer[]>(() => saved?.players || INITIAL_PLAYERS);
   const [tactics, setTactics] = useState<TacticsSettings>(() => saved?.tactics || INITIAL_TACTICS);
-  const [calendarDays, setCalendarDays] = useState<CalendarDay[]>(
-    () => saved?.calendarDays || generateFullCalendar()
-  );
+  const [calendarDays, setCalendarDays] = useState<CalendarDay[]>(() => {
+    const freshDays = generateFullCalendar();
+    if (!saved?.calendarDays || !Array.isArray(saved.calendarDays) || saved.calendarDays.length === 0) {
+      return freshDays;
+    }
+    // Check if saved calendar has Seleção BR fixtures
+    const hasSelecao = saved.calendarDays.some((d) => d.competition === 'Seleção BR');
+    if (!hasSelecao) {
+      // Inject Seleção BR fixtures into non-match/free days from fresh calendar
+      return saved.calendarDays.map((d) => {
+        const fresh = freshDays.find((fd) => fd.globalDayIndex === d.globalDayIndex);
+        if (fresh && fresh.competition === 'Seleção BR') {
+          return {
+            ...d,
+            type: 'MATCH',
+            competition: 'Seleção BR',
+            isNationalTeamMatch: true,
+            opponent: fresh.opponent,
+            title: fresh.title,
+            matchIndexInComp: fresh.matchIndexInComp,
+          };
+        }
+        return d;
+      });
+    }
+    return saved.calendarDays;
+  });
   const [currentGlobalIndex, setCurrentGlobalIndex] = useState<number>(
     () => saved?.currentGlobalIndex || 1
   );
@@ -144,10 +168,46 @@ export default function App() {
       (d) => d.globalDayIndex >= currentGlobalIndex && d.type === 'MATCH' && d.status !== 'COMPLETED'
     ) || calendarDays.find((d) => d.type === 'MATCH');
 
-  const nextSelecaoMatchDay =
-    calendarDays.find(
+  // Guaranteed next or active Seleção BR match when player is called up
+  const nextSelecaoMatchDay = useMemo(() => {
+    // 1. If today is already a Seleção match
+    if (currentDayData.type === 'MATCH' && currentDayData.competition === 'Seleção BR') {
+      return currentDayData;
+    }
+    // 2. Upcoming pending Seleção match
+    const upcoming = calendarDays.find(
+      (d) =>
+        d.globalDayIndex >= currentGlobalIndex &&
+        d.type === 'MATCH' &&
+        d.competition === 'Seleção BR' &&
+        d.status === 'PENDING'
+    );
+    if (upcoming) return upcoming;
+
+    // 3. Any pending Seleção match in calendar
+    const anyPending = calendarDays.find(
       (d) => d.type === 'MATCH' && d.competition === 'Seleção BR' && d.status === 'PENDING'
-    ) || null;
+    );
+    if (anyPending) return anyPending;
+
+    // 4. When called up, synthesize next international fixture so player can always play!
+    if (isCalledUpToSelecao) {
+      const opp = FICTIONAL_NATIONAL_TEAMS[0];
+      return {
+        dayNumber: currentDayData.dayNumber,
+        monthName: currentDayData.monthName,
+        globalDayIndex: currentDayData.globalDayIndex,
+        type: 'MATCH' as const,
+        competition: 'Seleção BR' as const,
+        isNationalTeamMatch: true,
+        opponent: opp,
+        isHome: true,
+        title: `🇧🇷 Seleção BR vs ${opp.name} · Superclássico Amistoso`,
+        status: 'PENDING' as const,
+      };
+    }
+    return null;
+  }, [calendarDays, currentGlobalIndex, currentDayData, isCalledUpToSelecao]);
 
   // Rest action: recovers 100% of energy as requested!
   const handleRest = () => {
@@ -723,10 +783,38 @@ export default function App() {
     });
   };
 
-  // Start a match from calendar (either LIVE play or INSTANT simulation)
+  // Start a match from calendar or Seleção trigger (either LIVE play or INSTANT simulation)
   const handleSelectMatch = (globalIndex: number, mode: 'PLAY' | 'SIMULATE') => {
-    const day = calendarDays.find((d) => d.globalDayIndex === globalIndex);
-    if (!day || day.type !== 'MATCH' || !day.opponent) return;
+    let day = calendarDays.find((d) => d.globalDayIndex === globalIndex);
+    if (!day) {
+      if (nextSelecaoMatchDay && nextSelecaoMatchDay.globalDayIndex === globalIndex) {
+        day = nextSelecaoMatchDay;
+      }
+    }
+
+    if (!day) return;
+
+    // If day is not yet configured with an opponent (e.g. converted from free day for Seleção)
+    if (day.type !== 'MATCH' || !day.opponent) {
+      if (isCalledUpToSelecao) {
+        const opp = FICTIONAL_NATIONAL_TEAMS[0];
+        day = {
+          ...day,
+          type: 'MATCH',
+          competition: 'Seleção BR',
+          isNationalTeamMatch: true,
+          opponent: opp,
+          title: `🇧🇷 Seleção BR vs ${opp.name} · Amistoso Oficial`,
+          isHome: true,
+          status: 'PENDING',
+        };
+        setCalendarDays((prev) =>
+          prev.map((d) => (d.globalDayIndex === globalIndex ? day! : d))
+        );
+      } else {
+        return;
+      }
+    }
 
     if (day.status === 'COMPLETED' && day.matchStats) {
       setPostMatchModalData({
